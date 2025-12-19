@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grover Genomics Demo</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #1e293b;
+            --text-light: #64748b;
+            --success: #10b981;
+            --error: #ef4444;
+            --border: #e2e8f0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 0;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        h1 {
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: var(--text-light);
+            font-size: 1.1rem;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            padding: 30px;
+            margin-bottom: 30px;
+            border: 1px solid var(--border);
+        }
+
+        .grid-inputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-light);
+        }
+
+        input[type="text"] {
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        .scenarios {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn-scenario {
+            background: #e0e7ff;
+            color: var(--primary);
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .btn-scenario:hover {
+            background: #c7d2fe;
+        }
+
+        .btn-run {
+            width: 100%;
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-run:hover {
+            background: var(--primary-hover);
+        }
+
+        .btn-run:disabled {
+            background: var(--text-light);
+            cursor: not-allowed;
+        }
+
+        .visualization-container {
+            margin-top: 30px;
+            display: none; /* Hidden by default */
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-box {
+            background: #f1f5f9;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: var(--text-light);
+            margin-top: 5px;
+        }
+
+        .genome-viz {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2px;
+            margin-bottom: 30px;
+            justify-content: center;
+        }
+
+        .base {
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #e2e8f0;
+            border-radius: 4px;
+            font-family: monospace;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .base.match {
+            background: var(--success);
+            color: white;
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            display: none;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error-msg {
+            background: #fee2e2;
+            color: var(--error);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1><i class="ph ph-dna" style="color: var(--primary); vertical-align: middle; margin-right: 8px;"></i>Grover Genomics</h1>
+        <div class="subtitle">Busca de padrões em DNA usando Computação Quântica</div>
+    </header>
+
+    <div class="card">
+        <div class="scenarios">
+            <button class="btn-scenario" onclick="setScenario(1)" title="Busca por uma região promotora comum em genes (sequência 'TATAAAA')."><i class="ph ph-dna"></i> Promoter (TATA Box)</button>
+            <button class="btn-scenario" onclick="setScenario(2)" title="Simula a busca de um padrão viral em uma sequência maior."><i class="ph ph-virus"></i> Viral Motif</button>
+            <button class="btn-scenario" onclick="setScenario(3)" title="O caso clássico de demonstração com repetições simples."><i class="ph ph-flask"></i> Repetição Simples</button>
+            <button class="btn-scenario" onclick="setScenario(4)" title="Um cenário 'difícil' onde o padrão aparece apenas uma vez no final de uma longa sequência."><i class="ph ph-crosshair"></i> Mutação Rara</button>
+            <button class="btn-scenario" onclick="setScenario(5)" title="Simulação de carga pesada (~30k bases). Pode levar cerca de 1 minuto."><i class="ph ph-database"></i> Genoma Extenso (Lento)</button>
+        </div>
+
+        <div class="grid-inputs">
+            <div class="input-group">
+                <label>Genoma (Sequência de DNA)</label>
+                <input type="text" id="genome" value="ACGTTACGTAACGTTACGTA" placeholder="Ex: ACGTT...">
+            </div>
+            <div class="input-group">
+                <label>Motif (Padrão a buscar)</label>
+                <input type="text" id="motif" value="ACGTT" placeholder="Ex: ACGTT">
+            </div>
+        </div>
+
+        <button class="btn-run" onclick="runSimulation()">
+            <i class="ph ph-play-circle" style="font-size: 1.2em; vertical-align: middle; margin-right: 5px;"></i> 
+            Rodar Algoritmo de Grover
+        </button>
+        
+        <div id="error-box" class="error-msg"></div>
+    </div>
+
+    <div id="loading" class="loading">
+        <div class="spinner"></div>
+        <p style="font-weight: 600; margin-bottom: 15px;">Executando simulação híbrida...</p>
+        
+        <div style="background: #f8fafc; padding: 15px; border-radius: 8px; display: inline-block; text-align: left; border: 1px solid #e2e8f0; min-width: 280px;">
+            <div style="margin-bottom: 8px; color: var(--text-light); font-size: 0.9rem; display: flex; justify-content: space-between;">
+                <span><i class="ph ph-cpu" style="color: var(--text); margin-right: 6px;"></i> Clássico (Indexação):</span>
+                <strong id="time-classical" style="color: var(--text);">--</strong>
+            </div>
+            <div style="color: var(--text-light); font-size: 0.9rem; display: flex; justify-content: space-between;">
+                <span><i class="ph ph-atom" style="color: var(--primary); margin-right: 6px;"></i> Quântico (Grover):</span>
+                <strong id="time-quantum" style="color: var(--text);">--</strong>
+            </div>
+        </div>
+
+        <p id="time-estimate" style="font-size: 0.85rem; color: var(--text-light); margin-top: 15px;"></p>
+    </div>
+
+    <div id="results" class="visualization-container card">
+        <h2><i class="ph ph-chart-bar" style="color: var(--primary); margin-right: 8px;"></i>Resultados da Simulação</h2>
+        
+        <div class="stats-grid">
+            <div class="stat-box">
+                <div class="stat-value" id="accuracy-display">0%</div>
+                <div class="stat-label"><i class="ph ph-target"></i> Taxa de Acerto</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" id="solutions-display">0</div>
+                <div class="stat-label"><i class="ph ph-check-circle"></i> Ocorrências</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" id="windows-display">0</div>
+                <div class="stat-label"><i class="ph ph-grid-four"></i> Total de Janelas</div>
+            </div>
+        </div>
+
+        <h3><i class="ph ph-eye" style="color: var(--text-light); margin-right: 8px;"></i>Visualização do Genoma</h3>
+        <p style="font-size: 0.9rem; color: var(--text-light); margin-bottom: 15px;">
+            As posições destacadas são onde o algoritmo quântico identificou o padrão com alta probabilidade.
+        </p>
+        <div id="genome-viz" class="genome-viz">
+            <!-- Preenchido via JS -->
+        </div>
+
+        <h3><i class="ph ph-trend-up" style="color: var(--text-light); margin-right: 8px;"></i>Distribuição de Probabilidade</h3>
+        <canvas id="probabilityChart"></canvas>
+
+        <h3><i class="ph ph-activity" style="color: var(--text-light); margin-right: 8px;"></i>Histograma de ExecuÇõÇœo</h3>
+        <p style="font-size: 0.85rem; color: var(--text-light); margin-bottom: 12px;">
+            Cada barra representa quantas mediÇõÇæes retornaram a janela correspondente durante as execuÇõÇæes do algoritmo.
+        </p>
+        <canvas id="histogramChart"></canvas>
+    </div>
+</div>
+
+<script>
+    let probabilityChart = null;
+    let histogramChart = null;
+
+    function setScenario(id) {
+        const genomeInput = document.getElementById('genome');
+        const motifInput = document.getElementById('motif');
+
+        if (id === 1) {
+            // Promoter Search (TATA Box)
+            genomeInput.value = "GGGCCTATAAAAGGGCCTATAAAAGGG";
+            motifInput.value = "TATAAAA";
+        } else if (id === 2) {
+            // Viral Motif
+            genomeInput.value = "ATGCGTACGTTAGCTAGCTAGCTAGCT";
+            motifInput.value = "TACGT";
+        } else if (id === 3) {
+            // Simple Repeat
+            genomeInput.value = "ACGTTACGTAACGTTACGTA";
+            motifInput.value = "ACGTT";
+        } else if (id === 4) {
+            // Rare Mutation
+            genomeInput.value = "CCCCCCCCCCCCCCCCCCCCCCATGC";
+            motifInput.value = "ATGC";
+        } else if (id === 5) {
+            // Heavy Load (limited to 100 chars)
+            // Gera uma string longa repetitiva e coloca o alvo no final
+            const chunk = "ACGTACGTAC"; // 10 chars
+            const repeats = 10; // 10 * 10 = 100 chars
+            let bigGenome = chunk.repeat(repeats);
+            // Substitui o final por um padrao unico
+            bigGenome = bigGenome.substring(0, bigGenome.length - 5) + "TTTTT";
+            
+            genomeInput.value = bigGenome;
+            motifInput.value = "TTTTT";
+        }
+    }
+
+    async function runSimulation() {
+        const genome = document.getElementById('genome').value;
+        const motif = document.getElementById('motif').value;
+        const errorBox = document.getElementById('error-box');
+        const loading = document.getElementById('loading');
+        const results = document.getElementById('results');
+        const timeEstimate = document.getElementById('time-estimate');
+
+        // Reset UI
+        errorBox.style.display = 'none';
+        results.style.display = 'none';
+        loading.style.display = 'block';
+
+        // 1. Estimativa Clássica (Busca linear/Indexação)
+        // Extremamente rápida em computadores clássicos para texto.
+        // Heurística: ~0.00001s por char (praticamente instantâneo para <1M chars)
+        let classicalVal = (genome.length * 0.00001);
+        let classicalDisplay = classicalVal < 0.01 ? "< 0.01 s" : `~${classicalVal.toFixed(2)} s`;
+
+        // 2. Estimativa Quântica (Simulação de Grover)
+        // A simulação clássica de um sistema quântico é custosa.
+        // Heurística: ~0.002s por char para a simulação
+        let quantumVal = Math.ceil(genome.length * 0.002);
+        if (quantumVal < 2) quantumVal = 2;
+        let quantumDisplay = `~${quantumVal} s`;
+
+        // Atualiza UI
+        document.getElementById('time-classical').textContent = classicalDisplay;
+        document.getElementById('time-quantum').textContent = quantumDisplay;
+
+        let totalEstimated = Math.ceil(classicalVal + quantumVal);
+        
+        timeEstimate.textContent = `Tempo total estimado: ~${totalEstimated} segundos...`;
+
+        // Timer para atualizar a mensagem se demorar mais
+        let secondsPassed = 0;
+        const timerInterval = setInterval(() => {
+            secondsPassed++;
+            if (secondsPassed > totalEstimated) {
+                timeEstimate.textContent = `Tempo total estimado: ~${totalEstimated} segundos... (finalizando...)`;
+            }
+        }, 1000);
+
+        try {
+            const response = await fetch('/simulate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ genome, motif })
+            });
+
+            clearInterval(timerInterval); // Para o timer
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Erro desconhecido');
+            }
+
+            renderResults(data, genome, motif);
+            loading.style.display = 'none';
+            results.style.display = 'block';
+
+        } catch (err) {
+            clearInterval(timerInterval);
+            loading.style.display = 'none';
+            errorBox.textContent = err.message;
+            errorBox.style.display = 'block';
+        }
+    }
+
+    function renderResults(data, genomeStr, motifStr) {
+        // 1. Stats
+        document.getElementById('accuracy-display').textContent = (data.accuracy * 100).toFixed(1) + '%';
+        document.getElementById('solutions-display').textContent = data.good_indices.length;
+        document.getElementById('windows-display').textContent = data.total_windows;
+
+        // 2. Genome Visualization
+        const vizContainer = document.getElementById('genome-viz');
+        vizContainer.innerHTML = '';
+        
+        // Vamos desenhar o genoma inteiro
+        // Mas precisamos saber onde começa cada "janela" vencedora
+        // O índice retornado pelo Grover é o índice inicial da janela no genoma.
+        
+        // Criar array de flags para highlight
+        let highlights = new Array(genomeStr.length).fill(false);
+        
+        data.good_indices.forEach(startIdx => {
+            for(let i=0; i < motifStr.length; i++) {
+                if (startIdx + i < genomeStr.length) {
+                    highlights[startIdx + i] = true;
+                }
+            }
+        });
+
+        for (let i = 0; i < genomeStr.length; i++) {
+            const div = document.createElement('div');
+            div.className = 'base ' + (highlights[i] ? 'match' : '');
+            div.textContent = genomeStr[i];
+            vizContainer.appendChild(div);
+        }
+
+        // 3. Chart
+        const probabilityCtx = document.getElementById('probabilityChart').getContext('2d');
+        
+        if (probabilityChart) probabilityChart.destroy();
+
+        const labels = data.results.map(r => `Idx ${r.index}`);
+        const probabilities = data.results.map(r => r.probability);
+        const backgroundColors = data.results.map(r => r.is_target ? '#10b981' : '#e2e8f0');
+
+        probabilityChart = new Chart(probabilityCtx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Probabilidade de Medição (%)',
+                    data: probabilities,
+                    backgroundColor: backgroundColors,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        title: { display: true, text: 'Probabilidade (%)' }
+                    },
+                    x: {
+                        title: { display: true, text: 'Índice da Janela' }
+                    }
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const idx = context.dataIndex;
+                                const windowContent = data.results[idx].window_content;
+                                return `Prob: ${context.raw.toFixed(1)}% | Seq: ${windowContent}`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        const histogramData = data.histogram || [];
+        if (histogramChart) histogramChart.destroy();
+
+        const histogramCtx = document.getElementById('histogramChart').getContext('2d');
+        const histogramLabels = histogramData.map(item => `Idx ${item.index}`);
+        const histogramCounts = histogramData.map(item => item.count);
+        const histogramColors = histogramData.map(item => item.is_target ? '#0ea5e9' : '#cbd5f5');
+
+        histogramChart = new Chart(histogramCtx, {
+            type: 'bar',
+            data: {
+                labels: histogramLabels,
+                datasets: [{
+                    label: 'NÇômero de mediÇõÇæes',
+                    data: histogramCounts,
+                    backgroundColor: histogramColors,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Total de mediÇõÇæes' }
+                    },
+                    x: {
+                        title: { display: true, text: 'Ç?ndice da Janela' }
+                    }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    }
+</script>
+
+</body>
+</html>

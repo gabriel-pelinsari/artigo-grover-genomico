@@ -1,0 +1,5 @@
+flask
+qiskit
+qiskit-algorithms
+biopython
+matplotlib
