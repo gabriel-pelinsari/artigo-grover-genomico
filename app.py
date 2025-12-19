@@ -22,7 +22,9 @@ def simulate():
             return jsonify({'error': 'Genoma e Motif são obrigatórios'}), 400
             
         # Executa a lógica clássica para pegar as janelas (para visualização)
+        start_classical = time.perf_counter()
         windows, good_indices = grover_genomics_demo.classical_find_occurrences(genome, motif)
+        classical_time = time.perf_counter() - start_classical
         
         # Executa a simulação quântica (50 trials)
         # Nota: O script original exige N=potência de 2. Vamos tentar rodar e capturar erro se falhar.
@@ -63,6 +65,7 @@ def simulate():
             'total_windows': len(windows),
             'good_indices': good_indices,
             'execution_time': grover_time,
+            'classical_time': classical_time,
             'total_shots': total_shots,
             'histogram': histogram
         })
@@ -110,7 +113,9 @@ def compare():
             return jsonify({'error': 'Genoma e Motif são obrigatórios'}), 400
         
         # Execute Grover
+        start_classical = time.perf_counter()
         windows, good_indices = grover_genomics_demo.classical_find_occurrences(genome, motif)
+        classical_time = time.perf_counter() - start_classical
         
         start_grover = time.perf_counter()
         acc, counts, _ = grover_genomics_demo.run_trials(genome, motif, trials=50)
@@ -131,6 +136,7 @@ def compare():
             'good_indices': good_indices,
             'total_windows': len(windows),
             'execution_time': grover_time,
+            'classical_time': classical_time,
             'total_shots': total_shots,
             'histogram': histogram,
             'results': [
@@ -152,6 +158,7 @@ def compare():
         
         # Add Grover detailed results
         comparison['grover']['execution_time'] = grover_time
+        comparison['grover']['classical_time'] = classical_time
         comparison['grover']['results'] = grover_results['results']
         comparison['grover']['total_windows'] = len(windows)
         
